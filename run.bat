@@ -9,7 +9,7 @@ if not exist build\classes mkdir build\classes
 
 echo [1/2] Compiling source files...
 REM Dung UTF-8 de doc duoc comment tieng Viet co dau
-javac -encoding UTF-8 -cp "lib/*" -d build\classes App.java action\*.java db\*.java model\*.java ui\*.java facade\*.java
+javac -encoding UTF-8 -cp "lib/*" -d build\classes App.java command\*.java db\*.java model\*.java ui\*.java
 if errorlevel 1 (
   echo.
   echo Compile failed.

@@ -34,13 +34,13 @@ public class ImportInvoiceDB {
       return false;
 
     String insertInvoiceSql = """
-        INSERT INTO import_invoice (create_date, total_amount, supplier_id, create_staff_id)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO import_invoice (create_date, supplier_id, create_staff_id)
+        VALUES (?, ?, ?)
         """;
 
     String insertDetailSql = """
-        INSERT INTO import_detail (invoice_id, part_id, quantity, price, total_amount)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO import_detail (invoice_id, part_id, quantity, price)
+        VALUES (?, ?, ?, ?)
         """;
 
     String updatePartQuantitySql = """
@@ -57,9 +57,8 @@ public class ImportInvoiceDB {
           PreparedStatement psUpdatePart = conn.prepareStatement(updatePartQuantitySql)) {
 
         psInvoice.setDate(1, Date.valueOf(invoice.getCreateDate()));
-        psInvoice.setFloat(2, invoice.getTotalAmount());
-        psInvoice.setInt(3, invoice.getSupplier().getId());
-        psInvoice.setInt(4, invoice.getCreateStaff().getId());
+        psInvoice.setInt(2, invoice.getSupplier().getId());
+        psInvoice.setInt(3, invoice.getCreateStaff().getId());
         psInvoice.executeUpdate();
 
         try (ResultSet rs = psInvoice.getGeneratedKeys()) {
@@ -75,7 +74,6 @@ public class ImportInvoiceDB {
           psDetail.setInt(2, detail.getPart().getId());
           psDetail.setInt(3, detail.getQuantity());
           psDetail.setFloat(4, detail.getPrice());
-          psDetail.setFloat(5, detail.getTotalAmount());
           psDetail.executeUpdate();
 
           psUpdatePart.setInt(1, detail.getQuantity());
@@ -103,7 +101,7 @@ public class ImportInvoiceDB {
     List<ImportInvoice> invoices = new ArrayList<>();
 
     String sql = """
-        SELECT i.id, i.create_date, i.total_amount,
+        SELECT i.id, i.create_date,
                s.id AS supplier_id, s.name AS supplier_name, s.address AS supplier_address,
                s.phone AS supplier_phone, s.email AS supplier_email,
                st.id AS staff_id, st.name AS staff_name, st.username AS staff_username,
@@ -122,7 +120,6 @@ public class ImportInvoiceDB {
         ImportInvoice invoice = new ImportInvoice();
         invoice.setId(rs.getInt("id"));
         invoice.setCreateDate(rs.getDate("create_date").toLocalDate());
-        invoice.setTotalAmount(rs.getFloat("total_amount"));
 
         Supplier supplier = new Supplier(
             rs.getInt("supplier_id"),
@@ -142,6 +139,7 @@ public class ImportInvoiceDB {
         invoice.setCreateStaff(staff);
 
         invoice.setImportDetails(loadDetailsByInvoiceId(conn, invoice.getId()));
+        invoice.recalculateTotalAmount();
         invoices.add(invoice);
       }
     } catch (SQLException e) {
@@ -155,14 +153,14 @@ public class ImportInvoiceDB {
     List<ImportDetail> details = new ArrayList<>();
 
     String sql = """
-        SELECT d.id, d.quantity, d.price, d.total_amount,
-               p.id AS part_id, p.name AS part_name, p.description AS part_description,
-               p.quantity AS part_quantity, p.buy_price, p.sell_price
-        FROM import_detail d
-        JOIN part p ON d.part_id = p.id
-        WHERE d.invoice_id = ?
-        ORDER BY d.id
-        """;
+        SELECT d.id, d.quantity, d.price,
+                 p.id AS part_id, p.name AS part_name, p.description AS part_description,
+                 p.quantity AS part_quantity, p.buy_price, p.sell_price
+          FROM import_detail d
+          JOIN part p ON d.part_id = p.id
+          WHERE d.invoice_id = ?
+          ORDER BY d.id
+          """;
 
     try (PreparedStatement ps = conn.prepareStatement(sql)) {
       ps.setInt(1, invoiceId);
@@ -182,7 +180,6 @@ public class ImportInvoiceDB {
               rs.getInt("quantity"),
               rs.getFloat("price"),
               part);
-          detail.setTotalAmount(rs.getFloat("total_amount"));
           details.add(detail);
         }
       }

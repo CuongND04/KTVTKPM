@@ -1,10 +1,11 @@
 import javax.swing.SwingUtilities;
 import javax.swing.JOptionPane;
 
-import action.StaffMainAction;
+import command.StaffMainCommand;
 import db.StaffDB;
 import model.Staff;
-import ui.StaffMain;
+import ui.ImportInvoiceView;
+import ui.StaffMainView;
 
 public class App {
   public static void main(String[] args) {
@@ -15,8 +16,8 @@ public class App {
         return;
       }
 
-      StaffMain view = new StaffMain();
-      new StaffMainAction(view, currentStaff).onCreate();
+      StaffMainView view = new StaffMainView();
+      view.setOpenImportCmd(new StaffMainCommand(() -> new ImportInvoiceView(currentStaff).setVisible(true)));
       view.setVisible(true);
     });
   }
